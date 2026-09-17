@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useReducedMotion } from "@/lib/useInView";
 
 /* Vertical timeline. The clay line is a progress indicator — an active state,
@@ -32,32 +32,41 @@ const STEPS = [
 
 export default function HowItWorks() {
   const ref = useRef<HTMLElement>(null);
-  const [scrolled, setScrolled] = useState(0);
+  const lineRef = useRef<HTMLSpanElement>(null);
+  const listRef = useRef<HTMLOListElement>(null);
   const reduced = useReducedMotion();
-  /* Fully drawn under reduced motion: the line is a wayfinding cue, so it has
-     to be present even when it is not allowed to animate. */
-  const progress = reduced ? 1 : scrolled;
 
-  /* Scroll-linked rather than a per-node observer: the brief asks for a line
-     that DRAWS as you scroll, which a discrete "activate on entry" observer
-     cannot express. Read-only on scroll, rAF-throttled, so it never fights
-     Lenis for the scroll position. */
+  /* Scroll-linked progress line. Direct DOM update via rAF throttled scroll
+     event ensures zero React re-render overhead while scrolling smoothly. */
   useEffect(() => {
     const el = ref.current;
-    if (!el || reduced) return;
+    const line = lineRef.current;
+    const list = listRef.current;
+    if (!el || !line || !list) return;
+
+    if (reduced) {
+      line.style.transform = "scaleY(1)";
+      const steps = list.querySelectorAll<HTMLLIElement>(".timeline-step");
+      steps.forEach((s) => (s.dataset.active = "true"));
+      return;
+    }
 
     let raf = 0;
     const measure = () => {
       raf = 0;
       const r = el.getBoundingClientRect();
-      /* 0 when the section's top reaches the viewport's lower third, 1 when
-         its bottom passes the middle. Keeps the draw inside the stretch where
-         the timeline is actually on screen. */
       const start = window.innerHeight * 0.75;
       const end = window.innerHeight * 0.4;
       const total = r.height + (start - end);
       const travelled = start - r.top;
-      setScrolled(Math.max(0, Math.min(1, travelled / total)));
+      const p = Math.max(0, Math.min(1, travelled / total));
+
+      line.style.transform = `scaleY(${p})`;
+      const steps = list.querySelectorAll<HTMLLIElement>(".timeline-step");
+      steps.forEach((s, i) => {
+        const active = p >= (i + 0.5) / STEPS.length;
+        s.dataset.active = active ? "true" : "false";
+      });
     };
 
     const onScroll = () => {
@@ -91,32 +100,29 @@ export default function HowItWorks() {
           Five steps, no counter.
         </h2>
 
-        <ol className="timeline relative mt-16 list-none pl-12">
+        <ol ref={listRef} className="timeline relative mt-16 list-none pl-12">
           {/* the track, and the clay line drawn over it */}
           <span aria-hidden="true" className="timeline-track" />
           <span
+            ref={lineRef}
             aria-hidden="true"
             className="timeline-line"
-            style={{ transform: `scaleY(${progress})` }}
+            style={{ transform: reduced ? "scaleY(1)" : "scaleY(0)" }}
           />
 
-          {STEPS.map((s, i) => {
-            // a node lights once the line has reached its position down the list
-            const active = progress >= (i + 0.5) / STEPS.length;
-            return (
-              <li
-                key={s.title}
-                className="timeline-step relative pb-14 last:pb-0"
-                data-active={active ? "true" : "false"}
-              >
-                <span aria-hidden="true" className="timeline-node" />
-                <h3 className="font-display text-ink" style={{ fontSize: "clamp(1.35rem, 2.6vw, 1.85rem)" }}>
-                  {s.title}
-                </h3>
-                <p className="mt-2 max-w-prose text-[15px] leading-relaxed text-sand">{s.body}</p>
-              </li>
-            );
-          })}
+          {STEPS.map((s, i) => (
+            <li
+              key={s.title}
+              className="timeline-step relative pb-14 last:pb-0"
+              data-active={reduced ? "true" : "false"}
+            >
+              <span aria-hidden="true" className="timeline-node" />
+              <h3 className="font-display text-ink" style={{ fontSize: "clamp(1.35rem, 2.6vw, 1.85rem)" }}>
+                {s.title}
+              </h3>
+              <p className="mt-2 max-w-prose text-[15px] leading-relaxed text-sand">{s.body}</p>
+            </li>
+          ))}
         </ol>
       </div>
     </section>

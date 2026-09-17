@@ -33,8 +33,16 @@ export default function SmoothScroll() {
 
       /* smoothWheel only. Touch is left native: Lenis's touch smoothing fights
          the browser's own momentum on iOS and makes the fleet carousel's
-         horizontal drag feel unpredictable. */
-      const lenis = new Lenis({ duration: 1.1, smoothWheel: true });
+         horizontal drag feel unpredictable.
+         autoRaf: false ensures that Lenis only advances when ticked by GSAP,
+         eliminating duplicate RAF loops and micro-judder. */
+      const lenis = new Lenis({
+        duration: 1.2,
+        smoothWheel: true,
+        autoRaf: false,
+        wheelMultiplier: 0.95,
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      });
       /* Hand the instance to the scroll helper. window.lenis is kept purely
          as a console handle for debugging; nothing in the app reads it. */
       setLenis(lenis);
@@ -44,7 +52,7 @@ export default function SmoothScroll() {
       lenis.on("scroll", ScrollTrigger.update);
       const raf = (time: number) => lenis.raf(time * 1000);
       gsap.ticker.add(raf);
-      gsap.ticker.lagSmoothing(0);
+      gsap.ticker.lagSmoothing(500, 33);
 
       /* Load-bearing, not a nicety. When ScrollTrigger pins the hero it injects
          a spacer that makes the document ~6.5 viewports tall, but Lenis has

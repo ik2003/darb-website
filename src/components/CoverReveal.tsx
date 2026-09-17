@@ -87,30 +87,25 @@ export const DESKTOP: RevealConfig = {
 const ramp = (v: number, a: number, b: number) =>
   a === b ? (v >= b ? 1 : 0) : Math.min(1, Math.max(0, (v - a) / (b - a)));
 
-/* Replays the existing heroWord reveal (blur clearing, letter-spacing
-   contracting, word rising). Removing the class and forcing a reflow before
-   re-adding is what restarts a CSS animation. */
 function playWords(root: HTMLElement | null) {
   if (!root) return;
   root.querySelectorAll<HTMLElement>("[data-word]").forEach((w, i) => {
     w.classList.remove("hero-word");
-    void w.offsetWidth;
-    w.style.animationDelay = `${i * 0.1}s`;
-    w.classList.add("hero-word");
+    requestAnimationFrame(() => {
+      w.style.animationDelay = `${i * 0.1}s`;
+      w.classList.add("hero-word");
+    });
   });
 }
 
-/* Restarts the existing heroRule / heroFade animations on the lockup, so the
-   hairline draws and DARB, BY KAHRAMANAH and the CTA cascade in at the moment
-   of the reveal — not once at page load, where they would already have
-   finished while the lockup was still invisible. */
 function playLockup(root: HTMLElement | null) {
   if (!root) return;
   root.querySelectorAll<HTMLElement>("[data-lock]").forEach((el) => {
     const cls = el.dataset.lock!;
     el.classList.remove(cls);
-    void el.offsetWidth;
-    el.classList.add(cls);
+    requestAnimationFrame(() => {
+      el.classList.add(cls);
+    });
   });
 }
 
@@ -374,10 +369,9 @@ export default function CoverReveal({ config }: { config: RevealConfig | null })
         end: () => `+=${window.innerHeight * config.scrollVh}`,
         pin,
         pinSpacing: true,
-        /* 0.6, not `true`: ScrollTrigger eases its own progress toward the
-           scroll position, so coarse wheel and touch deltas stop snapping the
-           sequence frame to frame. The value that settled the judder. */
-        scrub: 0.6,
+        /* 0.8: ScrollTrigger eases its own progress toward the
+           scroll position smoothly, preventing harsh stepping between frames. */
+        scrub: 0.8,
         invalidateOnRefresh: true,
       });
       getLenis()?.resize();

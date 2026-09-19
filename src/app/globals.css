@@ -1196,7 +1196,7 @@ section[data-hero][data-hero-failed] .cr-scrim {
   inset-inline: 0;
   top: 0;
   z-index: 10;
-  padding: 6dvh 1.5rem 0;
+  padding: clamp(4.25rem, 8dvh, 6rem) 1.5rem 0;
   text-align: center;
 }
 
